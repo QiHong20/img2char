@@ -1,11 +1,9 @@
 package com.qihong.img2char;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.FileInputStream;
 
 public class ImageToStringFilter implements ImageFilter<String> {
-    private final static String base = "#@*+.";
+    private final static String base = Constant.CHARS;
     @Override
     public String filter(BufferedImage sourceImage) {
         int imageWidth = sourceImage.getWidth();

@@ -4,8 +4,9 @@ package com.qihong.img2char;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-public class ImageToCharFilter implements ImageFilter<BufferedImage>{
-    private final static String base = "#@*+.";
+public class ImageToCharFilter implements ImageFilter<BufferedImage> {
+    private final static String base = Constant.CHARS;
+
     @Override
     public BufferedImage filter(BufferedImage image) {
         BufferedImage destPicture;
@@ -13,12 +14,17 @@ public class ImageToCharFilter implements ImageFilter<BufferedImage>{
         int imageHeight = image.getHeight();
         destPicture = new BufferedImage(imageWidth, imageHeight,
                 BufferedImage.TYPE_3BYTE_BGR);
-        int fontSize=(int)Math.floor(imageWidth/200)+1;
-        fontSize=fontSize>6?fontSize:6;
+        int fontSize = Constant.CHAR_MIN_SIZE;
+        if (Constant.autoFontSize) {
+            fontSize = (int) Math.floor(imageWidth / 200) + 1;
+            fontSize = fontSize > Constant.CHAR_MIN_SIZE ? fontSize : Constant.CHAR_MIN_SIZE;
+        }
+
+
         // 获取图像上下文
         Graphics g = createGraphics(destPicture, imageWidth, imageHeight, fontSize);
-        for (int i = image.getMinX(); i < imageHeight; i+=fontSize) {
-            for (int j = image.getMinY(); j < imageWidth; j+=fontSize) {
+        for (int i = image.getMinX(); i < imageHeight; i += fontSize) {
+            for (int j = image.getMinY(); j < imageWidth; j += fontSize) {
                 //图片的像素点其实是个矩阵，这里利用两个for循环来对每个像素进行操作
                 Object data = image.getRaster().getDataElements(j, i, null);//获取该点像素，并以object类型表示
                 int red = image.getColorModel().getRed(data);
@@ -33,12 +39,14 @@ public class ImageToCharFilter implements ImageFilter<BufferedImage>{
         g.dispose();
         return destPicture;
     }
+
     /**
      * 画板默认一些参数设置
-     * @param image 图片
-     * @param width 图片宽
+     *
+     * @param image  图片
+     * @param width  图片宽
      * @param height 图片高
-     * @param size 字体大小
+     * @param size   字体大小
      * @return
      */
     private static Graphics createGraphics(BufferedImage image, int width,

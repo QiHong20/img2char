@@ -3,6 +3,7 @@ package com.qihong.img2char;
 import com.madgag.gif.fmsware.AnimatedGifEncoder;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.Java2DFrameConverter;
 
 import javax.imageio.ImageIO;
@@ -14,135 +15,119 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class VideoHandleUtils {
+    private final static DefaultFilter DEFAULT_FILTER=new DefaultFilter();
     /**
      * 截取视频指定帧生成gif
+     *
      * @param videoFile 视频文件
      * @param destFile
      * @throws IOException 截取的长度超过视频长度
      */
-    public static void buildGif(String videoFile,String destFile) throws IOException {
-        FileOutputStream targetFile = new FileOutputStream(destFile);
-        FFmpegFrameGrabber ff = new FFmpegFrameGrabber(videoFile);
-        Java2DFrameConverter converter = new Java2DFrameConverter();
-        ff.start();
-        try {
-            //ff.setFrameNumber(0);
-            AnimatedGifEncoder en = new AnimatedGifEncoder();
-            //en.setFrameRate((float)frameRate);
-            en.start(targetFile);
-            int gifDelay=(int)Math.round(1000/ff.getVideoFrameRate());
-            int total=ff.getLengthInFrames();
-            int counter=0;
-            int health=9999999;
-            while(true){
-                if(total<=0||health<0)break;
-                health--;
-                Frame grab = ff.grab();
-                BufferedImage bufferedImage=converter.getBufferedImage(grab);
-                if(bufferedImage==null){
-                    continue;
-                }
-                total--;
-                counter++;
-                en.addFrame(bufferedImage);
-                en.setDelay(gifDelay);
-                //ImageIO.write(bufferedImage, "jpg", new File(videoFile.substring(0,videoFile.lastIndexOf("."))+"-"+counter+".jpg"));
-            }
-            en.finish();
-        }finally {
-            ff.stop();
-            ff.close();
-        }
+    public static void buildGif(String videoFile, String destFile) throws IOException {
+        buildGif(videoFile, destFile,null,null,DEFAULT_FILTER);
     }
 
     /**
      * 截取视频指定帧生成字符gif
+     *
      * @param videoFile 视频文件
      * @param destFile
      * @throws IOException 截取的长度超过视频长度
      */
-    public static void buildCharGif(String videoFile,String destFile) throws IOException {
-        FileOutputStream targetFile = new FileOutputStream(destFile);
+    public static void buildCharGif(String videoFile, String destFile) throws IOException {
+        ImageToCharFilter imageToCharFilter = new ImageToCharFilter();
+        buildGif(videoFile,destFile,null,null,imageToCharFilter);
+    }
+    private static Integer computeFrameNumber(Integer targetTime,double frameRate){
+        if(targetTime==null){
+            return targetTime;
+        }
+        double v = targetTime * frameRate / 1000;
+        return (int)Math.round(v);
+    }
+    public static void buildCharGif(String videoFile, String destFile,Integer startTime,Integer endTime ) throws IOException {
+
+        double frameRate=getFrameRate(videoFile);
+        Integer startFrame=computeFrameNumber(startTime,frameRate);
+        Integer endFrame=computeFrameNumber(endTime,frameRate);
+        ImageToCharFilter imageToCharFilter = new ImageToCharFilter();
+        buildGif(videoFile, destFile,startFrame,endFrame,imageToCharFilter);
+    }
+
+    /**
+     * 获取视频帧率
+     * @param videoFile
+     * @return
+     * @throws FrameGrabber.Exception
+     */
+    private static double getFrameRate(String videoFile) throws FrameGrabber.Exception {
+        FFmpegFrameGrabber ff = new FFmpegFrameGrabber(videoFile);
+        try {
+            ff.start();
+            return ff.getFrameRate();
+        }
+        finally {
+            ff.stop();
+            ff.close();
+        }
+    }
+
+    /**
+     * 生成gif
+     * @param videoFile 视频地址
+     * @param destFile gif地址
+     * @param startFrame 开始时间
+     * @param endFrame 结束时间
+     * @param filter 过滤器
+     * @throws IOException
+     */
+    private static void buildGif(String videoFile, String destFile,Integer startFrame,Integer endFrame,ImageFilter<BufferedImage> filter) throws IOException {
         FFmpegFrameGrabber ff = new FFmpegFrameGrabber(videoFile);
         Java2DFrameConverter converter = new Java2DFrameConverter();
         ff.start();
-        ImageToCharFilter imageToCharFilter=new ImageToCharFilter();
         try {
-            //ff.setFrameNumber(0);
             AnimatedGifEncoder en = new AnimatedGifEncoder();
-            //en.setFrameRate((float)frameRate);
-            en.start(targetFile);
-            int gifDelay=(int)Math.round(1000/ff.getVideoFrameRate());
-            int total=ff.getLengthInFrames();
-            int counter=0;
-            int health=9999999;
-            while(true){
-                if(total<=0||health<0)break;
-                health--;
+            en.start(destFile);
+            en.setFrameRate((float) ff.getVideoFrameRate());
+          //  int gifDelay = (int) Math.round(1000 / ff.getVideoFrameRate());
+            startFrame=startFrame==null?0:startFrame;
+            endFrame=endFrame==null?ff.getLengthInVideoFrames():endFrame;
+            for(int i=startFrame;i<=endFrame;i++){
+                ff.setVideoFrameNumber(i);
                 Frame grab = ff.grab();
-                BufferedImage bufferedImage=converter.getBufferedImage(grab);
-                if(bufferedImage==null){
-                    continue;
-                }
-                total--;
-                counter++;
-                BufferedImage charImage = imageToCharFilter.filter(bufferedImage);
+                BufferedImage bufferedImage = converter.getBufferedImage(grab);
+                if(bufferedImage==null)continue;
+                BufferedImage charImage = filter.filter(bufferedImage);
                 en.addFrame(charImage);
-                en.setDelay(gifDelay);
-                //ImageIO.write(bufferedImage, "jpg", new File(videoFile.substring(0,videoFile.lastIndexOf("."))+"-"+counter+".jpg"));
+              //  en.setDelay(gifDelay);
             }
             en.finish();
-        }finally {
+        } finally {
             ff.stop();
             ff.close();
         }
     }
-
 
     /**
-     * 截取视频指定帧生成gif
-     * @param videofile 视频文件
-     * @param startFrame 开始帧
-     * @param frameCount 截取帧数
-     * @param frameRate 帧频率（默认：3）
-     * @param margin 每截取一次跳过多少帧（默认：3）
-     * @throws IOException 截取的长度超过视频长度
+     * 默认的过滤器，不进行任何处理
      */
-    public static void buildGif(String videofile,int startFrame,int frameCount,Integer frameRate,Integer margin) throws IOException {
-        if(margin==null)margin=3;
-        if(frameRate==null)frameRate=3;
-        FileOutputStream targetFile = new FileOutputStream(videofile.substring(0,videofile.lastIndexOf("."))+".gif");
-        FFmpegFrameGrabber ff = new FFmpegFrameGrabber(videofile);
-
-        Java2DFrameConverter converter = new Java2DFrameConverter();
-        ff.start();
-        try {
-            if(startFrame>ff.getLengthInFrames() & (startFrame+frameCount)>ff.getLengthInFrames()) {
-                throw new RuntimeException("视频太短了");
-            }
-            //ff.setFrameNumber(startFrame);
-            AnimatedGifEncoder en = new AnimatedGifEncoder();
-            en.setFrameRate(frameRate);
-            en.start(targetFile);
-            for(int i=0;i<frameCount;i++) {
-                en.addFrame(converter.convert(ff.grab()));
-               // ff.setFrameNumber(ff.getFrameNumber()+margin);
-            }
-            en.finish();
-        }finally {
-            ff.stop();
-            ff.close();
+    private static class DefaultFilter implements ImageFilter<BufferedImage> {
+        @Override
+        public BufferedImage filter(BufferedImage image) {
+            return image;
         }
     }
+
     /**
      * 截取视频指定帧保存为指定格式的图片（图片保存在视频同文件夹下）
-     * @param videoFile 视频地址
-     * @param destFile 图片格式
+     *
+     * @param videoFile  视频地址
+     * @param destFile   图片格式
      * @param indexFrame 第几帧（默认：5）
      * @throws Exception
      */
-    public static void fetchFrame(String videoFile,String destFile,Integer indexFrame)throws Exception {
-        if(indexFrame==null)indexFrame=5;
+    public static void fetchFrame(String videoFile, String destFile, Integer indexFrame) throws Exception {
+        if (indexFrame == null) indexFrame = 5;
         FFmpegFrameGrabber ff = new FFmpegFrameGrabber(videoFile);
         ff.start();
         try {
@@ -160,29 +145,31 @@ public class VideoHandleUtils {
             int oheight = f.imageHeight ;
             int width = 800;
             int height = (int) (((double) width / owidth) * oheight);*/
-            Java2DFrameConverter converter =new Java2DFrameConverter();
-            BufferedImage fetchedImage =converter.getBufferedImage(f);
+            Java2DFrameConverter converter = new Java2DFrameConverter();
+            BufferedImage fetchedImage = converter.getBufferedImage(f);
             //bi=rotateImage(bi, 90);
             File targetFile = new File(destFile);
             ImageIO.write(fetchedImage, "jpg", targetFile);
-        }finally {
+        } finally {
             ff.stop();
             ff.close();
         }
     }
+
     /**
      * 将图片旋转指定度
+     *
      * @param bufferedimage 图片
-     * @param degree 旋转角度
+     * @param degree        旋转角度
      * @return
      */
-    public static BufferedImage rotateImage(BufferedImage bufferedimage, int degree){
-        int w= bufferedimage.getWidth();// 得到图片宽度。
-        int h= bufferedimage.getHeight();// 得到图片高度。
-        int type= bufferedimage.getColorModel().getTransparency();// 得到图片透明度。
+    public static BufferedImage rotateImage(BufferedImage bufferedimage, int degree) {
+        int w = bufferedimage.getWidth();// 得到图片宽度。
+        int h = bufferedimage.getHeight();// 得到图片高度。
+        int type = bufferedimage.getColorModel().getTransparency();// 得到图片透明度。
         BufferedImage img;// 空的图片。
         Graphics2D graphics2d;// 空的画笔。
-        (graphics2d= (img= new BufferedImage(w, h, type))
+        (graphics2d = (img = new BufferedImage(w, h, type))
                 .createGraphics()).setRenderingHint(
                 RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BILINEAR);
