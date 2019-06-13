@@ -1,5 +1,7 @@
 package com.qihong.img2char;
 
+import com.qihong.img2char.constant.Constant;
+
 import java.awt.image.BufferedImage;
 
 public class ImageToStringFilter implements ImageFilter<String> {

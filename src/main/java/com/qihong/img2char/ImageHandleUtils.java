@@ -67,8 +67,6 @@ public class ImageHandleUtils {
      */
     public static void gifToChar(String sourceImagePath, String destImagePath) throws IOException {
         File imageFile = new File(sourceImagePath);
-
-
         GifDecoder gifDecoder = new GifDecoder();
         FileInputStream fis = new FileInputStream(imageFile);
         int code = gifDecoder.read(fis);

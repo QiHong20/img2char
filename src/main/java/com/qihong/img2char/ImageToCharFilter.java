@@ -1,10 +1,17 @@
 package com.qihong.img2char;
 
 
+import com.qihong.img2char.constant.Constant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.security.auth.login.Configuration;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
 public class ImageToCharFilter implements ImageFilter<BufferedImage> {
+
+    private final static Logger logger = LoggerFactory.getLogger(VideoHandleUtils.class);
     private final static String base = Constant.CHARS;
 
     @Override
@@ -19,25 +26,59 @@ public class ImageToCharFilter implements ImageFilter<BufferedImage> {
             fontSize = (int) Math.floor(imageWidth / 200) + 1;
             fontSize = fontSize > Constant.CHAR_MIN_SIZE ? fontSize : Constant.CHAR_MIN_SIZE;
         }
-
-
         // 获取图像上下文
         Graphics g = createGraphics(destPicture, imageWidth, imageHeight, fontSize);
         for (int i = image.getMinX(); i < imageHeight; i += fontSize) {
             for (int j = image.getMinY(); j < imageWidth; j += fontSize) {
                 //图片的像素点其实是个矩阵，这里利用两个for循环来对每个像素进行操作
-                Object data = image.getRaster().getDataElements(j, i, null);//获取该点像素，并以object类型表示
-                int red = image.getColorModel().getRed(data);
-                int green = image.getColorModel().getGreen(data);
-                int blue = image.getColorModel().getBlue(data);
-                int gray = (red * 3 + green * 6 + blue * 1) / 10;
+                int gray = 0;
+                if (Constant.CHAR_GIFT_AVG_SAMPLING) {
+                    gray = getAvgGary(image, i, imageHeight, j, imageWidth, fontSize);
+
+                } else {
+                    Object data = image.getRaster().getDataElements(j, i, null);//获取该点像素，并以object类型表示
+                    int red = image.getColorModel().getRed(data);
+                    int green = image.getColorModel().getGreen(data);
+                    int blue = image.getColorModel().getBlue(data);
+                    gray = (red * 3 + green * 6 + blue * 1) / 10;
+                }
+
                 int index = Math.round(gray * (base.length() + 1) / 255);
                 String c = index >= base.length() ? " " : String.valueOf(base.charAt(index));
                 g.drawString(String.valueOf(c), j, i);
             }
         }
         g.dispose();
+//        int destWidth=(int)Constant.GIF_WIDTH;
+//        int destHeight=(int)(imageHeight/rate);
+//        Image scaledInstance = destPicture.getScaledInstance(destWidth, destHeight, Image.SCALE_DEFAULT);
+//        BufferedImage i=new BufferedImage()
         return destPicture;
+    }
+
+    private int getAvgGary(BufferedImage image, int i, int maxI, int j, int maxJ, int fontSize) {
+        int iMax = i + fontSize;
+        iMax = iMax < maxI ? iMax : maxI;
+        int jMax = j + fontSize;
+        jMax = jMax < maxJ ? jMax : maxJ;
+        int sumGray = 0;
+        int counter = 0;
+
+        for (int currentI = i; currentI < iMax; currentI++) {
+            for (int currentJ = j; currentJ < jMax; currentJ++) {
+                Object data = image.getRaster().getDataElements(currentJ, currentI, null);//获取该点像素，并以object类型表示
+                int red = image.getColorModel().getRed(data);
+                int green = image.getColorModel().getGreen(data);
+                int blue = image.getColorModel().getBlue(data);
+                int gray = (red * 3 + green * 6 + blue * 1) / 10;
+                counter++;
+                sumGray += gray;
+            }
+        }
+        logger.debug("counter={},sumgray={}", counter, sumGray);
+        sumGray = sumGray / (fontSize * fontSize);
+        return sumGray;
+
     }
 
     /**
