@@ -10,11 +10,11 @@ public class ScaleAndGifFilter implements  ImageFilter<BufferedImage>{
     public BufferedImage filter(BufferedImage image) {
         int imageWidth = image.getWidth();
         int imageHeight = image.getHeight();
-        if(Constant.GIF_WIDTH>imageWidth){
-            return image;
+        BufferedImage dest=image;
+        if(Constant.GIF_WIDTH<imageWidth){
+            double scale= Constant.GIF_WIDTH/imageWidth;
+            dest=new ImageScaleFilter(scale).filter(dest);
         }
-        double scale= Constant.GIF_WIDTH/imageWidth;
-        BufferedImage dest=new ImageScaleFilter(scale).filter(image);
         dest=new ImageToCharFilter().filter(dest);
         return dest;
     }

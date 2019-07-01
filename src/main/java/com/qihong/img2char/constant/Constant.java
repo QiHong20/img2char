@@ -5,8 +5,6 @@ public  class Constant {
      * 生成的字符串最小的大小
      */
     public static final int CHAR_MIN_SIZE=8;
-
-
     /**
      * 生成的字符串池，从左到右为黑->白
      */
@@ -16,7 +14,7 @@ public  class Constant {
      */
     public static final boolean autoFontSize=false;
 
-    public static final float GIF_WIDTH=800;
+    public static final float GIF_WIDTH=99999;
 
     /**
      * 转换成字符图片是采样是否通过范围采样

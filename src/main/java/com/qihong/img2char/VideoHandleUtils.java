@@ -38,7 +38,6 @@ public class VideoHandleUtils {
     }
 
 
-
     /**
      * 截取视频指定帧生成字符gif
      *
@@ -68,13 +67,12 @@ public class VideoHandleUtils {
         logger.info("end buildChar gif");
     }
 
-    public static void buildGif(String videoFile, String destFile, Integer start, Integer end,ImageFilter filter,ConvertRangeType type) throws IOException {
+    public static void buildGif(String videoFile, String destFile, Integer start, Integer end, ImageFilter filter, ConvertRangeType type) throws IOException {
         logger.info("start buildChar gif");
-        if(type==ConvertRangeType.Frame) {
+        if (type == ConvertRangeType.Frame) {
 
             buildGif(videoFile, destFile, start, end, filter);
-        }
-        else{
+        } else {
             double frameRate = getFrameRate(videoFile);
             Integer startFrame = computeFrameNumber(start, frameRate);
             Integer endFrame = computeFrameNumber(end, frameRate);
@@ -82,9 +80,11 @@ public class VideoHandleUtils {
         }
         logger.info("end buildChar gif");
     }
-    enum ConvertRangeType{
-        Time,Frame
+
+    enum ConvertRangeType {
+        Time, Frame
     }
+
     /**
      * 获取视频帧率
      *
@@ -128,7 +128,7 @@ public class VideoHandleUtils {
             int speed = (int) Math.round(ff.getFrameRate() / 30);
             endFrame = endFrame == null ? ff.getLengthInVideoFrames() : endFrame;
             for (int i = startFrame; i <= endFrame; i += speed) {
-                logger.info("共{}帧，正在处理第{}帧",endFrame,i);
+                logger.info("共{}帧，正在处理第{}帧", endFrame, i);
                 ff.setVideoFrameNumber(i);
                 Frame grab = ff.grab();
                 BufferedImage bufferedImage = converter.getBufferedImage(grab);
@@ -143,7 +143,8 @@ public class VideoHandleUtils {
             ff.close();
         }
     }
-    public static void buildVideo(String videoFile, String destFile, Integer startTime, Integer endTime,ImageFilter filter) throws IOException {
+
+    public static void buildVideo(String videoFile, String destFile, Integer startTime, Integer endTime, ImageFilter filter) throws IOException {
         logger.info("start buildChar gif");
         double frameRate = getFrameRate(videoFile);
         Integer startFrame = computeFrameNumber(startTime, frameRate);
@@ -151,14 +152,17 @@ public class VideoHandleUtils {
         _buildVideo(videoFile, destFile, startFrame, endFrame, filter);
         logger.info("end buildChar gif");
     }
+
     public static void buildGifVideo(String videoFile, String destFile, Integer startTime, Integer endTime) throws IOException {
         ScaleAndGifFilter scaleAndGifFilter = new ScaleAndGifFilter();
         buildVideo(videoFile, destFile, startTime, endTime, scaleAndGifFilter);
     }
+
     public static void buildGifVideo(String videoFile, String destFile) throws IOException {
         ScaleAndGifFilter scaleAndGifFilter = new ScaleAndGifFilter();
         buildVideo(videoFile, destFile, null, null, scaleAndGifFilter);
     }
+
     /**
      * 生成gif
      *
@@ -172,31 +176,32 @@ public class VideoHandleUtils {
     private static void _buildVideo(String videoFile, String destFile, Integer startFrame, Integer endFrame, ImageFilter<BufferedImage> filter) throws IOException {
         FFmpegFrameGrabber ff = new FFmpegFrameGrabber(videoFile);
         Java2DFrameConverter converter = new Java2DFrameConverter();
-        FFmpegFrameRecorder recorder=null;
+        FFmpegFrameRecorder recorder = null;
         ff.start();
         try {
-            int videoHeight=ff.getImageHeight();
-            int videoWidth=ff.getImageWidth();
-            recorder=new FFmpegFrameRecorder(destFile,videoWidth,videoHeight);
+            int videoHeight = ff.getImageHeight();
+            int videoWidth = ff.getImageWidth();
+            recorder = new FFmpegFrameRecorder(destFile, videoWidth, videoHeight);
             recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264); // 28
             recorder.setFormat("mp4");
-            recorder.setPixelFormat(0);
+            recorder.setVideoQuality(1);
+            // recorder.setPixelFormat(0);
             recorder.setFrameRate(ff.getFrameRate());
+            recorder.setAudioChannels(ff.getAudioChannels());
             recorder.start();
-            //en.setFrameRate((float) ff.getVideoFrameRate());
             //  int gifDelay = (int) Math.round(1000 / ff.getVideoFrameRate());
             startFrame = startFrame == null ? 0 : startFrame;
             endFrame = endFrame == null ? ff.getLengthInVideoFrames() : endFrame;
-            for (int i = startFrame; i <= endFrame; i ++) {
-                logger.info("共{}帧，正在处理第{}帧",endFrame,i);
+            for (int i = startFrame; i <= endFrame; i++) {
+                logger.info("共{}帧，正在处理第{}帧", endFrame, i);
                 ff.setVideoFrameNumber(i);
-                Frame grab = ff.grab();
+                Frame grab = ff.grabImage();
+//                ff.grabSamples()
                 BufferedImage bufferedImage = converter.getBufferedImage(grab);
                 if (bufferedImage == null) continue;
                 BufferedImage destImage = filter.filter(bufferedImage);
                 Frame convert = converter.convert(destImage);
                 recorder.record(convert);
-                //  en.setDelay(gifDelay);
             }
         } finally {
             ff.stop();
